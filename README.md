@@ -9,12 +9,13 @@ A modern Android app for tracking live football (soccer) scores and match result
 
 ## Features
 
-- Real-time football match scores and live status updates
+- Real-time football/basketball/cricket/hockey match scores and live status updates
+- Search per team/country/competition
 - Team search functionality to filter matches by team names
 - Date navigation (today, yesterday, tomorrow)
 - Matches organized by competition/league
 - Match details including team logos, scores, and status
-- Pull-to-refresh with Material Design 3 UI
+- Manual refresh button with Material Design 3 UI
 
 ## Download
 [<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/78/Google_Play_Store_badge_EN.svg/250px-Google_Play_Store_badge_EN.svg.png" alt="Get it on Obtainium" height="60">](https://play.google.com/store/apps/details?id=com.zachvlat.footballscores)
