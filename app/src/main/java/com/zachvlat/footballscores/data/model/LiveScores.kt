@@ -97,11 +97,12 @@ data class Event(
         return when (epsUpper) {
             "LIVE", "HT", "2H", "1H", "ET", "BT", "P" -> true
             else -> {
-                epsUpper.contains("'") ||
-                epsUpper.matches(Regex("\\d+'")) ||
-                epsUpper.matches(Regex("\\d+\\+\\d+'")) ||
-                epsUpper.matches(Regex("\\d+Q")) ||
-                epsUpper.matches(Regex("\\d+E"))
+            epsUpper.contains("'") ||
+            epsUpper.matches(Regex("\\d+'")) ||
+            epsUpper.matches(Regex("\\d+\\+\\d+'")) ||
+            epsUpper.matches(Regex("\\d+Q")) ||
+            epsUpper.matches(Regex("\\d+E")) ||
+            epsUpper.startsWith("OT")
             }
         }
     }

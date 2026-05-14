@@ -101,7 +101,7 @@ fun MainScreen() {
             TopAppBar(
                 title = {
                     Text(
-                        text = "Scorito",
+                        text = "LiveMatches",
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.ExtraBold,
                         color = MaterialTheme.colorScheme.onSurface

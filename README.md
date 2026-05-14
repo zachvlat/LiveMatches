@@ -1,4 +1,4 @@
-# Scorito
+# LiveMatches
 
 <span>
 <img width="200" alt="image" src="https://raw.githubusercontent.com/zachvlat/scorito/refs/heads/master/fastlane/metadata/android/en-US/images/phoneScreenshots/2.png" />

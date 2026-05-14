@@ -1,4 +1,4 @@
-Scorito
+LiveMatches
 
 A modern Android app for tracking live match scores and match results.
 
