@@ -83,7 +83,7 @@ class BasketballViewModel(private val repository: LiveScoresRepository) : ViewMo
     private fun startAutoRefresh() {
         viewModelScope.launch {
             while (true) {
-                delay(60000) // 1 minute
+                delay(60000)
                 if (_currentDate.value == getTodayDateString()) {
                     refresh()
                 }

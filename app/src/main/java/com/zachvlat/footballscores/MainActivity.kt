@@ -100,7 +100,6 @@ fun MainScreen() {
         }
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // App Header with Menu Button
             TopAppBar(
                 title = {
                     Text(
@@ -128,7 +127,6 @@ fun MainScreen() {
                 )
             )
             
-            // Content Area
             Box(modifier = Modifier.weight(1f)) {
                 when (selectedSport) {
                     SportType.SOCCER -> SportScreen(sportType = SportType.SOCCER)
@@ -159,7 +157,8 @@ fun SportScreen(sportType: SportType) {
                 matchDetailState = viewModel.matchDetailState.collectAsState().value,
                 onRefresh = { viewModel.refresh() },
                 onLoadScoresForDate = { viewModel.loadScoresForDate(it) },
-                onDismissMatchDetail = { viewModel.dismissMatchDetail() }
+                onDismissMatchDetail = { viewModel.dismissMatchDetail() },
+                onMatchClick = { viewModel.onMatchClick(it) }
             )
         }
         SportType.BASKETBALL -> {
@@ -227,7 +226,8 @@ fun SportContent(
     matchDetailState: Any?,
     onRefresh: () -> Unit,
     onLoadScoresForDate: (String) -> Unit,
-    onDismissMatchDetail: () -> Unit
+    onDismissMatchDetail: () -> Unit,
+    onMatchClick: (String) -> Unit = {}
 ) {
     var showDateDialog by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
@@ -235,7 +235,6 @@ fun SportContent(
     val keyboardController = LocalSoftwareKeyboardController.current
     
     Column(modifier = Modifier.fillMaxSize()) {
-        // Search and Filter Bar
         Surface(
             modifier = Modifier.fillMaxWidth(),
             color = MaterialTheme.colorScheme.surface,
@@ -251,7 +250,6 @@ fun SportContent(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Date and Status Info
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = sportType.displayName,
@@ -279,7 +277,6 @@ fun SportContent(
                         }
                     }
                     
-                    // Action Buttons
                     Row {
                         IconButton(
                             onClick = { showDateDialog = true },
@@ -315,7 +312,6 @@ fun SportContent(
                 
                 Spacer(modifier = Modifier.height(12.dp))
                 
-                // Search Field
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
@@ -364,7 +360,6 @@ fun SportContent(
                 
                 Spacer(modifier = Modifier.height(8.dp))
                 
-                // Filter Chips
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -381,7 +376,6 @@ fun SportContent(
             }
         }
         
-        // Content Area
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -398,7 +392,6 @@ fun SportContent(
                             val filteredStages = uiState.response.Stages.map { stage ->
                                 var filteredEvents = stage.Events
                                 
-                                // Apply search filter (teams + competitions + country)
                                 if (searchQuery.isNotBlank()) {
                                     filteredEvents = filteredEvents.filter { event ->
                                         val team1Name = event.T1.firstOrNull()?.Nm?.lowercase() ?: ""
@@ -418,14 +411,12 @@ fun SportContent(
                                     }
                                 }
                                 
-                                // Apply live filter
                                 if (showLiveOnly) {
                                     filteredEvents = filteredEvents.filter { event ->
                                         event.isLive()
                                     }
                                 }
                                 
-                                // Create new Stage object with filtered events
                                 com.zachvlat.footballscores.data.model.Stage(
                                     Sid = stage.Sid ?: "",
                                     Snm = stage.Snm ?: "",
@@ -462,7 +453,7 @@ fun SportContent(
                                     onRefresh = onRefresh
                                 )
                             } else {
-                                MatchList(stages = filteredStages, viewModel as LiveScoresViewModel)
+                                MatchList(stages = filteredStages, onMatchClick = onMatchClick)
                             }
                         }
                         is LiveScoresUiState.Error -> {
@@ -482,7 +473,6 @@ fun SportContent(
                             val filteredStages = uiState.response.Stages.map { stage ->
                                 var filteredEvents = stage.Events
                                 
-                                // Apply search filter (teams + competitions)
                                 if (searchQuery.isNotBlank()) {
                                     filteredEvents = filteredEvents.filter { event ->
                                         val team1Name = event.T1.firstOrNull()?.Nm?.lowercase() ?: ""
@@ -498,14 +488,12 @@ fun SportContent(
                                     }
                                 }
                                 
-                                // Apply live filter
                                 if (showLiveOnly) {
                                     filteredEvents = filteredEvents.filter { event ->
                                         event.isLive()
                                     }
                                 }
                                 
-                                // Create new Stage object with filtered events
                                 com.zachvlat.footballscores.data.model.Stage(
                                     Sid = stage.Sid ?: "",
                                     Snm = stage.Snm ?: "",
@@ -542,7 +530,7 @@ fun SportContent(
                                     onRefresh = onRefresh
                                 )
                             } else {
-                                MatchList(stages = filteredStages, viewModel as BasketballViewModel)
+                                MatchList(stages = filteredStages)
                             }
                         }
                         is BasketballUiState.Error -> {
@@ -619,7 +607,7 @@ fun SportContent(
                                     onRefresh = onRefresh
                                 )
                             } else {
-                                MatchList(stages = filteredStages, viewModel as CricketViewModel)
+                                MatchList(stages = filteredStages)
                             }
                         }
                         is CricketUiState.Error -> {
@@ -696,7 +684,7 @@ fun SportContent(
                                     onRefresh = onRefresh
                                 )
                             } else {
-                                MatchList(stages = filteredStages, viewModel as HockeyViewModel)
+                                MatchList(stages = filteredStages)
                             }
                         }
                         is HockeyUiState.Error -> {
@@ -721,12 +709,13 @@ fun SportContent(
         )
     }
     
-    // Match Detail Popup (only for soccer)
     if (sportType == SportType.SOCCER) {
         when (val state = matchDetailState) {
             is MatchDetailState.Success -> {
-                MatchDetailPopup(
+                MatchDetailBottomSheet(
                     matchDetail = state.matchDetail,
+                    lineups = state.lineups,
+                    event = state.event,
                     onDismiss = onDismissMatchDetail
                 )
             }
@@ -759,27 +748,28 @@ fun SportContent(
                     }
                 )
             }
-            else -> { /* Hidden state - do nothing */ }
+            else -> { }
         }
     }
 }
 
 @Composable
-fun MatchList(stages: List<com.zachvlat.footballscores.data.model.Stage>, viewModel: Any? = null) {
+fun MatchList(
+    stages: List<com.zachvlat.footballscores.data.model.Stage>,
+    onMatchClick: (String) -> Unit = {}
+) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = 16.dp)
     ) {
         stages.forEach { stage ->
             if (stage.Events.isNotEmpty()) {
-                // Competition Header
                 item {
                     CompetitionHeader(stage = stage)
                 }
                 
-                // Matches for this competition
                 items(stage.Events) { event ->
-                    MatchCard(event = event)
+                    MatchCard(event = event, onMatchClick = onMatchClick)
                 }
             }
         }

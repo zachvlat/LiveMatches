@@ -32,7 +32,7 @@ data class MatchDetailResponse(
     val Stg: Stage,
     val Pid: Int,
     val Eloff: Int,
-    val `Incs-s`: Map<String, List<Incident>>?
+    val `Incs-s`: Map<String, List<MatchIncidentGroup>>?
 )
 
 data class MatchDetailMedia(
@@ -90,6 +90,14 @@ data class MatchTime(
     val RTm: Long
 )
 
+data class MatchIncidentGroup(
+    val Min: Int,
+    val Nm: Int,
+    val Sc: List<Int>?,
+    val Sor: Int,
+    val Incs: List<Incident>?
+)
+
 data class Incident(
     val Min: Int,
     val Nm: Int,
@@ -108,17 +116,23 @@ data class Incident(
     val Sor: Int
 ) {
     fun getIncidentType(): String {
-        return when (Nm) {
-            1 -> "Goal"
-            2 -> "Goal"
-            3 -> "Yellow Card"
-            4 -> "Red Card"
-            5 -> "Substitution"
-            6 -> "Own Goal"
-            7 -> "Penalty"
-            8 -> "Missed Penalty"
-            9 -> "Var"
-            else -> "Unknown"
+        return when (IT) {
+            36 -> "Goal"
+            63 -> "Assist"
+            37 -> "Yellow Card"
+            38 -> "Red Card"
+            65 -> "Substitution"
+            39 -> "Own Goal"
+            88 -> "Missed Penalty"
+            else -> when (Nm) {
+                3 -> "Yellow Card"
+                4 -> "Red Card"
+                5 -> "Substitution"
+                6 -> "Own Goal"
+                7 -> "Penalty"
+                8 -> "Missed Penalty"
+                else -> "Event"
+            }
         }
     }
     

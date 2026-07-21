@@ -45,10 +45,8 @@ fun MatchDetailPopup(
                     .fillMaxSize()
                     .background(MaterialTheme.colorScheme.surface)
             ) {
-                // Header
                 MatchDetailHeader(matchDetail, onDismiss)
                 
-                // Content
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
@@ -63,7 +61,8 @@ fun MatchDetailPopup(
                         MatchDetailVenue(matchDetail.Venue)
                     }
                     
-                    matchDetail.`Incs-s`?.get("1")?.let { incidents ->
+                    matchDetail.`Incs-s`?.get("1")?.let { incidentGroups ->
+                        val incidents = incidentGroups.flatMap { it.Incs ?: emptyList() }
                         if (incidents.isNotEmpty()) {
                             item {
                                 MatchDetailIncidents(incidents)
@@ -131,16 +130,13 @@ private fun MatchDetailScore(matchDetail: MatchDetailResponse) {
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Teams and Score
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Team 1
                 DetailTeamInfo(team = matchDetail.T1.first())
                 
-                // Score
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
@@ -175,7 +171,6 @@ private fun MatchDetailScore(matchDetail: MatchDetailResponse) {
                     )
                 }
                 
-                // Team 2
                 DetailTeamInfo(team = matchDetail.T2.first())
             }
         }
@@ -188,7 +183,6 @@ private fun DetailTeamInfo(team: DetailTeam) {
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.width(100.dp)
     ) {
-        // Team Logo
         val imageUrl = team.getTeamImageUrl()
         if (imageUrl != null) {
             AsyncImage(

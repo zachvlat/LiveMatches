@@ -3,11 +3,13 @@ package com.zachvlat.footballscores.data.repository
 import android.util.Log
 import com.zachvlat.footballscores.data.api.LiveScoresApi
 import com.zachvlat.footballscores.data.api.MatchDetailApi
+import com.zachvlat.footballscores.data.api.LineupsApi
 import com.zachvlat.footballscores.data.api.BasketballApi
 import com.zachvlat.footballscores.data.api.CricketApi
 import com.zachvlat.footballscores.data.api.HockeyApi
 import com.zachvlat.footballscores.data.model.LiveScoresResponse
 import com.zachvlat.footballscores.data.model.MatchDetailResponse
+import com.zachvlat.footballscores.data.model.LineupsResponse
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
@@ -21,6 +23,7 @@ class LiveScoresRepository {
     private val cricketApi: CricketApi
     private val hockeyApi: HockeyApi
     private val matchDetailApi: MatchDetailApi
+    private val lineupsApi: LineupsApi
     
     init {
         val loggingInterceptor = HttpLoggingInterceptor().apply {
@@ -50,6 +53,7 @@ class LiveScoresRepository {
         cricketApi = retrofit.create(CricketApi::class.java)
         hockeyApi = retrofit.create(HockeyApi::class.java)
         matchDetailApi = matchDetailRetrofit.create(MatchDetailApi::class.java)
+        lineupsApi = matchDetailRetrofit.create(LineupsApi::class.java)
     }
     
     suspend fun getTodayLiveScores(): Result<LiveScoresResponse> {
@@ -157,6 +161,17 @@ class LiveScoresRepository {
             Result.success(response)
         } catch (e: Exception) {
             Log.e("LiveScoresRepository", "Error fetching match details for ID: $matchId", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getLineups(matchId: String): Result<LineupsResponse> {
+        return try {
+            Log.d("LiveScoresRepository", "Fetching lineups for match ID: $matchId")
+            val response = lineupsApi.getLineups(matchId)
+            Result.success(response)
+        } catch (e: Exception) {
+            Log.e("LiveScoresRepository", "Error fetching lineups for match ID: $matchId", e)
             Result.failure(e)
         }
     }

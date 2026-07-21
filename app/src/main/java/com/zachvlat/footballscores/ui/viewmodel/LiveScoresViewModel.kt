@@ -5,6 +5,8 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.zachvlat.footballscores.data.model.LiveScoresResponse
 import com.zachvlat.footballscores.data.model.MatchDetailResponse
+import com.zachvlat.footballscores.data.model.LineupsResponse
+import com.zachvlat.footballscores.data.model.Event
 import com.zachvlat.footballscores.data.repository.LiveScoresRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -90,7 +92,7 @@ class LiveScoresViewModel(private val repository: LiveScoresRepository) : ViewMo
     private fun startAutoRefresh() {
         viewModelScope.launch {
             while (true) {
-                delay(60000) // 1 minute
+                delay(60000)
                 if (_currentDate.value == getTodayDateString()) {
                     refresh()
                 }
@@ -130,17 +132,30 @@ class LiveScoresViewModel(private val repository: LiveScoresRepository) : ViewMo
     private fun loadMatchDetails(matchId: String) {
         viewModelScope.launch {
             _matchDetailState.value = MatchDetailState.Loading
-            
-            repository.getMatchDetails(matchId).fold(
-                onSuccess = { response ->
-                    _matchDetailState.value = MatchDetailState.Success(response)
-                },
-                onFailure = { error ->
-                    _matchDetailState.value = MatchDetailState.Error(
-                        message = error.message ?: "Failed to load match details"
-                    )
-                }
-            )
+
+            val currentState = _uiState.value
+            val event = if (currentState is LiveScoresUiState.Success) {
+                currentState.response.Stages.flatMap { it.Events }.find { it.Eid == matchId }
+            } else null
+
+            val matchDetailResult = repository.getMatchDetails(matchId)
+            val lineupsResult = repository.getLineups(matchId)
+
+            val matchDetail = matchDetailResult.getOrNull()
+            val lineups = lineupsResult.getOrNull()
+
+            if (matchDetail != null || lineups != null) {
+                _matchDetailState.value = MatchDetailState.Success(
+                    matchDetail = matchDetail,
+                    lineups = lineups,
+                    event = event
+                )
+            } else {
+                val error = matchDetailResult.exceptionOrNull() ?: lineupsResult.exceptionOrNull()
+                _matchDetailState.value = MatchDetailState.Error(
+                    message = error?.message ?: "Failed to load match details"
+                )
+            }
         }
     }
 }
@@ -148,7 +163,11 @@ class LiveScoresViewModel(private val repository: LiveScoresRepository) : ViewMo
 sealed class MatchDetailState {
     object Hidden : MatchDetailState()
     object Loading : MatchDetailState()
-    data class Success(val matchDetail: MatchDetailResponse) : MatchDetailState()
+    data class Success(
+        val matchDetail: MatchDetailResponse?,
+        val lineups: LineupsResponse?,
+        val event: Event?
+    ) : MatchDetailState()
     data class Error(val message: String) : MatchDetailState()
 }
 

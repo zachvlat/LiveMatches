@@ -40,7 +40,6 @@ private fun parseColor(colorString: String): Color {
             }
         }
     } catch (e: IllegalArgumentException) {
-        // Fallback to a default color if parsing fails
         MaterialTheme.colorScheme.primary
     }
 }
@@ -50,7 +49,8 @@ fun MatchCard(event: Event, onMatchClick: (String) -> Unit = {}, modifier: Modif
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 0.dp, vertical = 4.dp),
+            .padding(horizontal = 0.dp, vertical = 4.dp)
+            .clickable { onMatchClick(event.Eid) },
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
@@ -63,17 +63,14 @@ fun MatchCard(event: Event, onMatchClick: (String) -> Unit = {}, modifier: Modif
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Team 1
             TeamInfo(team = event.T1.first(), alignment = Alignment.End)
 
             Spacer(modifier = Modifier.width(16.dp))
 
-            // Score Section
             ScoreSection(event = event)
 
             Spacer(modifier = Modifier.width(16.dp))
 
-            // Team 2
             TeamInfo(team = event.T2.first(), alignment = Alignment.Start)
         }
     }
@@ -85,7 +82,6 @@ private fun TeamInfo(team: Team, alignment: Alignment.Horizontal) {
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.width(100.dp)
     ) {
-        // Team Logo/Placeholder
         Box(
             modifier = Modifier
                 .size(48.dp)
@@ -116,7 +112,6 @@ private fun TeamInfo(team: Team, alignment: Alignment.Horizontal) {
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Team Name - centered with fixed width
         Text(
             text = team.Nm,
             style = MaterialTheme.typography.bodySmall,
@@ -135,7 +130,6 @@ private fun ScoreSection(event: Event) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Halftime Score if available
         if (!isCricket && !event.Trh1.isNullOrEmpty() && !event.Trh2.isNullOrEmpty()) {
             Text(
                 text = "HT: ${event.Trh1}-${event.Trh2}",
@@ -145,7 +139,6 @@ private fun ScoreSection(event: Event) {
             Spacer(modifier = Modifier.height(4.dp))
         }
 
-        // Main Score
         if (isCricket) {
             CricketScoreDisplay(event)
         } else {
@@ -175,7 +168,6 @@ private fun CricketScoreDisplay(event: Event) {
     val team2Name = event.T2.firstOrNull()?.Abr ?: "T2"
     
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        // Commentary if available
         if (!event.ECo.isNullOrEmpty()) {
             Text(
                 text = event.ECo,
@@ -188,7 +180,6 @@ private fun CricketScoreDisplay(event: Event) {
             Spacer(modifier = Modifier.height(4.dp))
         }
         
-        // Team 2 score (usually the batting team)
         if (team2Runs > 0) {
             Text(
                 text = "$team2Name: ${team2Runs}/${team2Wickets}",
@@ -203,7 +194,6 @@ private fun CricketScoreDisplay(event: Event) {
             )
         }
         
-        // Team 1 score
         if (team1Runs > 0) {
             if (team2Runs > 0) Spacer(modifier = Modifier.height(4.dp))
             Text(
@@ -230,7 +220,6 @@ private fun CricketScoreDisplay(event: Event) {
         
         Spacer(modifier = Modifier.height(4.dp))
         
-        // Status
         val safeStatus = event.Eps ?: "NS"
         StatusBadge(status = safeStatus, minutes = safeStatus, startTime = event.Esd, esid = event.Esid)
     }
@@ -274,7 +263,6 @@ private fun getDisplayScore(event: Event): String {
         val team2Wickets = event.Tr2CW1 ?: 0
         val team2Overs = event.Tr2CO1 ?: 0.0
         
-        // Show both innings scores if available
         val team1Score = if (team1Runs > 0) "${team1Runs}/${team1Wickets} (${formatOvers(team1Overs)})" else null
         val team2Score = if (team2Runs > 0) "${team2Runs}/${team2Wickets} (${formatOvers(team2Overs)})" else null
         
@@ -286,7 +274,6 @@ private fun getDisplayScore(event: Event): String {
         }
     }
     
-    // Football/Basketball format
     val tr1 = event.Tr1
     val tr2 = event.Tr2
     val status = event.Eps ?: "NS"
@@ -409,7 +396,6 @@ fun CompetitionHeader(stage: Stage) {
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Competition Badge
             val badgeUrl = stage.getCompetitionBadgeUrl()
             if (badgeUrl != null) {
                 AsyncImage(
@@ -423,7 +409,6 @@ fun CompetitionHeader(stage: Stage) {
                 Spacer(modifier = Modifier.width(32.dp + 12.dp))
             }
 
-            // Competition Info
             Column(modifier = Modifier.weight(1f)) {
                  Text(
                      text = stage.CompN ?: stage.Snm,
