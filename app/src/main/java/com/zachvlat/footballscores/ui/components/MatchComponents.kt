@@ -238,20 +238,23 @@ private fun CricketScoreDisplay(event: Event) {
 
 private fun formatStartTime(timestamp: Long): String {
     return try {
-        // Parse YYYYMMDDHHMMSS format
         val timeStr = timestamp.toString()
         if (timeStr.length == 14) {
             val year = timeStr.substring(0, 4).toInt()
-            val month = timeStr.substring(4, 6).toInt() - 1 // Calendar months are 0-based
+            val month = timeStr.substring(4, 6).toInt() - 1
             val day = timeStr.substring(6, 8).toInt()
             val hour = timeStr.substring(8, 10).toInt()
             val minute = timeStr.substring(10, 12).toInt()
-            
-            val calendar = Calendar.getInstance()
-            calendar.set(year, month, day, hour, minute)
-            
+
+            val cestCalendar = Calendar.getInstance(TimeZone.getTimeZone("Europe/Berlin"))
+            cestCalendar.set(year, month, day, hour, minute, 0)
+            cestCalendar.set(Calendar.MILLISECOND, 0)
+
+            val localCalendar = Calendar.getInstance()
+            localCalendar.timeInMillis = cestCalendar.timeInMillis
+
             val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
-            timeFormat.format(calendar.time)
+            timeFormat.format(localCalendar.time)
         } else {
             timestamp.toString()
         }
@@ -313,7 +316,7 @@ private fun StatusBadge(status: String?, minutes: String?, startTime: Long?, esi
         esid == 33 -> "LIVE" to Color.Green
         esid == 1 && status?.uppercase() == "NS" -> {
             val timeText = startTime?.let { formatStartTime(it) } ?: "NS"
-            timeText to Color.Blue
+            timeText to MaterialTheme.colorScheme.onSurface
         }
         else -> when (status?.uppercase() ?: "NS") {
             "FT" -> "FT" to Color.Gray
@@ -322,7 +325,7 @@ private fun StatusBadge(status: String?, minutes: String?, startTime: Long?, esi
             "HT" -> "HT" to Color.Magenta
             "NS" -> {
                 val timeText = startTime?.let { formatStartTime(it) } ?: "NS"
-                timeText to Color.Blue
+                timeText to MaterialTheme.colorScheme.onSurface
             }
             else -> {
                 val liveMinutes = if (status?.contains("'") == true) {

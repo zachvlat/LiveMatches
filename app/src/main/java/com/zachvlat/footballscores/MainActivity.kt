@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.Search
 
 import androidx.compose.material3.*
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -40,6 +41,8 @@ import com.zachvlat.footballscores.data.repository.LiveScoresRepository
 import com.zachvlat.footballscores.ui.components.*
 import com.zachvlat.footballscores.ui.theme.FootballscoresTheme
 import com.zachvlat.footballscores.ui.viewmodel.*
+import java.text.SimpleDateFormat
+import java.util.*
 
 enum class SportType(val displayName: String, val icon: androidx.compose.ui.graphics.vector.ImageVector) {
     SOCCER("Football", Icons.Default.Search),
@@ -156,10 +159,7 @@ fun SportScreen(sportType: SportType) {
                 matchDetailState = viewModel.matchDetailState.collectAsState().value,
                 onRefresh = { viewModel.refresh() },
                 onLoadScoresForDate = { viewModel.loadScoresForDate(it) },
-                onDismissMatchDetail = { viewModel.dismissMatchDetail() },
-                getTodayDateString = { viewModel.getTodayDateString() },
-                getYesterdayDateString = { viewModel.getYesterdayDateString() },
-                getTomorrowDateString = { viewModel.getTomorrowDateString() }
+                onDismissMatchDetail = { viewModel.dismissMatchDetail() }
             )
         }
         SportType.BASKETBALL -> {
@@ -176,10 +176,7 @@ fun SportScreen(sportType: SportType) {
                 matchDetailState = null,
                 onRefresh = { viewModel.refresh() },
                 onLoadScoresForDate = { viewModel.loadScoresForDate(it) },
-                onDismissMatchDetail = { },
-                getTodayDateString = { viewModel.getTodayDateString() },
-                getYesterdayDateString = { viewModel.getYesterdayDateString() },
-                getTomorrowDateString = { viewModel.getTomorrowDateString() }
+                onDismissMatchDetail = { }
             )
         }
         SportType.CRICKET -> {
@@ -196,10 +193,7 @@ fun SportScreen(sportType: SportType) {
                 matchDetailState = null,
                 onRefresh = { viewModel.refresh() },
                 onLoadScoresForDate = { viewModel.loadScoresForDate(it) },
-                onDismissMatchDetail = { },
-                getTodayDateString = { viewModel.getTodayDateString() },
-                getYesterdayDateString = { viewModel.getYesterdayDateString() },
-                getTomorrowDateString = { viewModel.getTomorrowDateString() }
+                onDismissMatchDetail = { }
             )
         }
         SportType.HOCKEY -> {
@@ -216,10 +210,7 @@ fun SportScreen(sportType: SportType) {
                 matchDetailState = null,
                 onRefresh = { viewModel.refresh() },
                 onLoadScoresForDate = { viewModel.loadScoresForDate(it) },
-                onDismissMatchDetail = { },
-                getTodayDateString = { viewModel.getTodayDateString() },
-                getYesterdayDateString = { viewModel.getYesterdayDateString() },
-                getTomorrowDateString = { viewModel.getTomorrowDateString() }
+                onDismissMatchDetail = { }
             )
         }
     }
@@ -236,10 +227,7 @@ fun SportContent(
     matchDetailState: Any?,
     onRefresh: () -> Unit,
     onLoadScoresForDate: (String) -> Unit,
-    onDismissMatchDetail: () -> Unit,
-    getTodayDateString: () -> String,
-    getYesterdayDateString: () -> String,
-    getTomorrowDateString: () -> String
+    onDismissMatchDetail: () -> Unit
 ) {
     var showDateDialog by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
@@ -729,10 +717,7 @@ fun SportContent(
                 onLoadScoresForDate(date)
                 showDateDialog = false
             },
-            onDismiss = { showDateDialog = false },
-            getTodayDateString = getTodayDateString,
-            getYesterdayDateString = getYesterdayDateString,
-            getTomorrowDateString = getTomorrowDateString
+            onDismiss = { showDateDialog = false }
         )
     }
     
@@ -801,42 +786,75 @@ fun MatchList(stages: List<com.zachvlat.footballscores.data.model.Stage>, viewMo
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DateSelectionDialog(
     onDateSelected: (String) -> Unit,
-    onDismiss: () -> Unit,
-    getTodayDateString: () -> String,
-    getYesterdayDateString: () -> String,
-    getTomorrowDateString: () -> String
+    onDismiss: () -> Unit
 ) {
-    AlertDialog(
+    val datePickerState = rememberDatePickerState(
+        initialSelectedDateMillis = System.currentTimeMillis()
+    )
+
+    Dialog(
         onDismissRequest = onDismiss,
-        title = { Text("Select Date") },
-        text = {
-            Column {
-                TextButton(onClick = {
-                    onDateSelected(getTodayDateString())
-                }) {
-                    Text("Today")
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth(0.95f)
+                .wrapContentHeight(),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Column(
+                modifier = Modifier.background(MaterialTheme.colorScheme.surface)
+            ) {
+                DatePicker(
+                    state = datePickerState,
+                    title = {
+                        Text(
+                            text = "Select Date",
+                            modifier = Modifier.padding(start = 24.dp, top = 16.dp),
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                    },
+                    headline = {
+                        Text(
+                            text = datePickerState.selectedDateMillis?.let { millis ->
+                                val sdf = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
+                                sdf.format(Date(millis))
+                            } ?: "Pick a date",
+                            modifier = Modifier.padding(start = 24.dp, bottom = 8.dp),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    },
+                    showModeToggle = false
+                )
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(onClick = onDismiss) {
+                        Text("Cancel")
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    TextButton(
+                        onClick = {
+                            datePickerState.selectedDateMillis?.let { millis ->
+                                val sdf = SimpleDateFormat("yyyyMMdd", Locale.US)
+                                onDateSelected(sdf.format(Date(millis)))
+                            }
+                        }
+                    ) {
+                        Text("Confirm")
+                    }
                 }
-                TextButton(onClick = {
-                    onDateSelected(getYesterdayDateString())
-                }) {
-                    Text("Yesterday")
-                }
-                TextButton(onClick = {
-                    onDateSelected(getTomorrowDateString())
-                }) {
-                    Text("Tomorrow")
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
             }
         }
-    )
+    }
 }
 
 @Composable
