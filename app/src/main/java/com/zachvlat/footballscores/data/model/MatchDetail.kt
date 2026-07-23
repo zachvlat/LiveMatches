@@ -95,8 +95,39 @@ data class MatchIncidentGroup(
     val Nm: Int,
     val Sc: List<Int>?,
     val Sor: Int,
-    val Incs: List<Incident>?
-)
+    val Incs: List<Incident>?,
+    val IT: Int?,
+    val Pn: String?,
+    val Fn: String?,
+    val Ln: String?,
+    val Aid: String?,
+    val ID: String?,
+    val PosA: Int?,
+    val Pnum: Int?,
+    val Pnt: String?
+) {
+    fun isFlat(): Boolean = Incs == null && IT != null
+
+    fun getFlatIncidentType(): String? {
+        if (!isFlat()) return null
+        return when (IT) {
+            36 -> "Goal"
+            63 -> "Assist"
+            37 -> "Yellow Card"
+            38 -> "Red Card"
+            39 -> "Own Goal"
+            88 -> "Missed Penalty"
+            45 -> "Red Card"
+            else -> "Event"
+        }
+    }
+
+    fun getFlatPlayerName(): String {
+        return if (!Pn.isNullOrEmpty()) Pn
+        else if (!Fn.isNullOrEmpty() && !Ln.isNullOrEmpty()) "$Fn $Ln"
+        else "Unknown Player"
+    }
+}
 
 data class Incident(
     val Min: Int,
@@ -113,25 +144,32 @@ data class Incident(
     val PnumO: Int?,
     val IT: Int,
     val Sc: List<Int>?,
-    val Sor: Int
+    val Sor: Int,
+    val AsAid: String?,
+    val AsPn: String?,
+    val AsFn: String?,
+    val AsLn: String?,
+    val OutPn: String?,
+    val OutFn: String?,
+    val OutLn: String?
 ) {
     fun getIncidentType(): String {
         return when (IT) {
-            36 -> "Goal"
-            63 -> "Assist"
-            37 -> "Yellow Card"
-            38 -> "Red Card"
-            65 -> "Substitution"
-            39 -> "Own Goal"
-            88 -> "Missed Penalty"
+            36 -> "⚽"
+            63 -> "👟"
+            37 -> "🟨"
+            38 -> "🟥"
+            45 -> "🔄"
+            39 -> "⚽"
+            88 -> "❌"
             else -> when (Nm) {
-                3 -> "Yellow Card"
-                4 -> "Red Card"
-                5 -> "Substitution"
-                6 -> "Own Goal"
-                7 -> "Penalty"
-                8 -> "Missed Penalty"
-                else -> "Event"
+                3 -> "🟨"
+                4 -> "🟥"
+                5 -> "🔄"
+                6 -> "⚽"
+                7 -> "⚽"
+                8 -> "❌"
+                else -> "•"
             }
         }
     }
@@ -145,6 +183,26 @@ data class Incident(
             Snm
         } else {
             "Unknown Player"
+        }
+    }
+    
+    fun getAssistName(): String? {
+        return if (!AsPn.isNullOrEmpty()) {
+            AsPn
+        } else if (!AsFn.isNullOrEmpty() && !AsLn.isNullOrEmpty()) {
+            "$AsFn $AsLn"
+        } else {
+            null
+        }
+    }
+    
+    fun getOutPlayerName(): String? {
+        return if (!OutPn.isNullOrEmpty()) {
+            OutPn
+        } else if (!OutFn.isNullOrEmpty() && !OutLn.isNullOrEmpty()) {
+            "$OutFn $OutLn"
+        } else {
+            null
         }
     }
 }

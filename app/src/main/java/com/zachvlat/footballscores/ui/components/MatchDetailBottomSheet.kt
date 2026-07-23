@@ -64,11 +64,14 @@ fun MatchDetailBottomSheet(
                 }
             }
 
-            matchDetail?.`Incs-s`?.get("1")?.let { incidentGroups ->
-                if (incidentGroups.isNotEmpty()) {
-                    item {
-                        IncidentsSection(incidentGroups)
-                    }
+            val allIncidents = listOfNotNull(
+                matchDetail?.`Incs-s`?.get("1"),
+                matchDetail?.`Incs-s`?.get("2")
+            ).flatten().sortedBy { it.Min }
+
+            if (allIncidents.isNotEmpty()) {
+                item {
+                    IncidentsSection(allIncidents)
                 }
             }
         }
@@ -319,13 +322,14 @@ private fun SubstitutionsSection(subs: Map<String, List<Substitution>>) {
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            val allSubs = subs.values.flatten().sortedBy { it.Min }
+            subs.forEach { (teamKey, teamSubs) ->
+                val outgoing = teamSubs.filter { it.IT == 4 }
+                val incoming = teamSubs.filter { it.IT == 5 }
 
-            allSubs.chunked(2).forEach { pair ->
-                pair.forEach { sub ->
-                    val isTeam1 = sub.Nm == 1
-                    val playerIn = sub.getPlayerInName()
-                    val minute = sub.Min
+                outgoing.forEach { out ->
+                    val inMatch = incoming.find { it.ID == out.IDo }
+                    val playerOut = out.getPlayerInName()
+                    val playerIn = inMatch?.getPlayerInName() ?: "Unknown"
 
                     Row(
                         modifier = Modifier
@@ -336,26 +340,26 @@ private fun SubstitutionsSection(subs: Map<String, List<Substitution>>) {
                         Surface(
                             modifier = Modifier.size(20.dp),
                             shape = CircleShape,
-                            color = if (isTeam1) Color(0xFF4CAF50).copy(alpha = 0.1f) else Color(0xFF2196F3).copy(alpha = 0.1f)
+                            color = if (teamKey == "1") Color(0xFF4CAF50).copy(alpha = 0.1f) else Color(0xFF2196F3).copy(alpha = 0.1f)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Text(
                                     text = "⇄",
                                     modifier = Modifier.size(12.dp),
                                     fontSize = 10.sp,
-                                    color = if (isTeam1) Color(0xFF4CAF50) else Color(0xFF2196F3)
+                                    color = if (teamKey == "1") Color(0xFF4CAF50) else Color(0xFF2196F3)
                                 )
                             }
                         }
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "$minute'",
+                            text = "${out.Min}'",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.width(32.dp)
                         )
                         Text(
-                            text = playerIn,
+                            text = "$playerOut → $playerIn",
                             style = MaterialTheme.typography.bodySmall,
                             modifier = Modifier.weight(1f)
                         )
@@ -387,15 +391,9 @@ private fun IncidentsSection(incidentGroups: List<MatchIncidentGroup>) {
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            val allIncidents = incidentGroups
-                .sortedBy { it.Min }
-                .flatMap { group ->
-                    group.Incs?.map { incident ->
-                        incident to group
-                    } ?: emptyList()
-                }
+            val sortedGroups = incidentGroups.sortedBy { it.Min }
 
-            allIncidents.forEachIndexed { index, (incident, group) ->
+            sortedGroups.forEachIndexed { index, group ->
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -403,34 +401,84 @@ private fun IncidentsSection(incidentGroups: List<MatchIncidentGroup>) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "${incident.Min}'",
+                        text = "${group.Min}'",
                         style = MaterialTheme.typography.labelSmall,
                         modifier = Modifier.width(40.dp),
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
 
-                    Text(
-                        text = incident.getIncidentType(),
-                        style = MaterialTheme.typography.labelSmall,
-                        modifier = Modifier.width(80.dp),
-                        color = when (incident.IT) {
+                    if (group.isFlat()) {
+                        val icon = when (group.IT) {
+                            36 -> "⚽ "
+                            37 -> "🟨 "
+                            38 -> "🟥 "
+                            39 -> "⚽ "
+                            88 -> "❌ "
+                            45 -> "🟥 "
+                            else -> ""
+                        }
+                        val color = when (group.IT) {
                             36 -> Color(0xFF4CAF50)
-                            63 -> MaterialTheme.colorScheme.primary
                             37 -> Color(0xFFFFC107)
                             38 -> Color(0xFFF44336)
-                            65 -> MaterialTheme.colorScheme.onSurfaceVariant
+                            39 -> Color(0xFF4CAF50)
+                            88 -> MaterialTheme.colorScheme.onSurface
+                            45 -> Color(0xFFF44336)
                             else -> MaterialTheme.colorScheme.onSurface
                         }
-                    )
+                        Text(
+                            text = "${icon}${group.getFlatPlayerName()}",
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.weight(1f),
+                            color = color
+                        )
+                    } else {
+                        val goals = group.Incs?.filter { it.IT == 36 } ?: emptyList()
+                        val assists = group.Incs?.filter { it.IT == 63 } ?: emptyList()
+                        val others = group.Incs?.filter { it.IT != 36 && it.IT != 63 } ?: emptyList()
 
-                    Text(
-                        text = incident.getPlayerName(),
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.weight(1f)
-                    )
+                        val displayText = when {
+                            goals.isNotEmpty() && assists.isNotEmpty() -> {
+                                val scorer = goals.first().getPlayerName()
+                                val assister = assists.first().getPlayerName()
+                                "$scorer ($assister)"
+                            }
+                            goals.isNotEmpty() -> {
+                                goals.first().getPlayerName()
+                            }
+                            others.isNotEmpty() -> {
+                                others.first().getPlayerName()
+                            }
+                            else -> ""
+                        }
+
+                        val icon = when {
+                            goals.isNotEmpty() -> "⚽ "
+                            else -> ""
+                        }
+                        val color = when {
+                            goals.isNotEmpty() -> Color(0xFF4CAF50)
+                            else -> MaterialTheme.colorScheme.onSurface
+                        }
+
+                        Text(
+                            text = "${icon}${displayText}",
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.weight(1f),
+                            color = color
+                        )
+                    }
+
+                    if (group.Sc != null && group.Sc.size == 2) {
+                        Text(
+                            text = "${group.Sc[0]}-${group.Sc[1]}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
 
-                if (index < allIncidents.lastIndex) {
+                if (index < sortedGroups.lastIndex) {
                     HorizontalDivider(
                         modifier = Modifier.padding(vertical = 2.dp),
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)

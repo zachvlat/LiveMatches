@@ -290,10 +290,12 @@ private fun MatchDetailIncidents(incidents: List<Incident>) {
                         text = incident.getIncidentType(),
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.width(80.dp),
-                        color = when (incident.Nm) {
-                            1, 2, 7 -> Color.Green
-                            3 -> Color.Yellow
-                            4 -> Color.Red
+                        color = when (incident.IT) {
+                            36 -> Color(0xFF4CAF50)
+                            63 -> MaterialTheme.colorScheme.primary
+                            37 -> Color(0xFFFFC107)
+                            38 -> Color(0xFFF44336)
+                            45 -> MaterialTheme.colorScheme.onSurfaceVariant
                             else -> MaterialTheme.colorScheme.onSurface
                         }
                     )

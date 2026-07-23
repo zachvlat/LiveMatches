@@ -47,8 +47,8 @@ data class Substitution(
     val Nm: Int,
     val Aid: String?,
     val ID: String?,
-    val Fn: String,
-    val Ln: String,
+    val Fn: String?,
+    val Ln: String?,
     val Pnt: String?,
     val Pnum: Int?,
     val Pn: String?,
@@ -58,5 +58,9 @@ data class Substitution(
     val IT: Int,
     val Sor: Int?
 ) {
-    fun getPlayerInName(): String = "$Fn $Ln"
+    fun getPlayerInName(): String {
+        return if (!Pn.isNullOrEmpty()) Pn
+        else if (!Fn.isNullOrEmpty() && !Ln.isNullOrEmpty()) "$Fn $Ln"
+        else "Unknown Player"
+    }
 }
