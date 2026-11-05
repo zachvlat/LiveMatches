@@ -82,17 +82,16 @@ private fun TeamInfo(team: Team, alignment: Alignment.Horizontal) {
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.width(100.dp)
     ) {
+        val imageUrl = team.getTeamImageUrl()
+        val circleColor = if (imageUrl != null) Color.Transparent
+            else team.Fc?.let { parseColor(it) } ?: MaterialTheme.colorScheme.primary
         Box(
             modifier = Modifier
                 .size(48.dp)
                 .clip(RoundedCornerShape(24.dp))
-                .background(
-                    color = team.Fc?.let { parseColor(it) }
-                        ?: MaterialTheme.colorScheme.primary
-                ),
+                .background(circleColor),
             contentAlignment = Alignment.Center
         ) {
-            val imageUrl = team.getTeamImageUrl()
             if (imageUrl != null) {
                 AsyncImage(
                     model = imageUrl,
@@ -225,32 +224,8 @@ private fun CricketScoreDisplay(event: Event) {
     }
 }
 
-private fun formatStartTime(timestamp: Long): String {
-    return try {
-        val timeStr = timestamp.toString()
-        if (timeStr.length == 14) {
-            val year = timeStr.substring(0, 4).toInt()
-            val month = timeStr.substring(4, 6).toInt() - 1
-            val day = timeStr.substring(6, 8).toInt()
-            val hour = timeStr.substring(8, 10).toInt()
-            val minute = timeStr.substring(10, 12).toInt()
-
-            val cestCalendar = Calendar.getInstance(TimeZone.getTimeZone("Europe/Berlin"))
-            cestCalendar.set(year, month, day, hour, minute, 0)
-            cestCalendar.set(Calendar.MILLISECOND, 0)
-
-            val localCalendar = Calendar.getInstance()
-            localCalendar.timeInMillis = cestCalendar.timeInMillis
-
-            val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
-            timeFormat.format(localCalendar.time)
-        } else {
-            timestamp.toString()
-        }
-    } catch (e: Exception) {
-        timestamp.toString()
-    }
-}
+private fun formatStartTime(timestamp: Long): String =
+    com.zachvlat.footballscores.data.api.esdToLocalTime(timestamp) ?: timestamp.toString()
 
 private fun getDisplayScore(event: Event): String {
     val isCricket = event.Tr1C1 != null
@@ -281,7 +256,8 @@ private fun getDisplayScore(event: Event): String {
     val team1Score = if (tr1 == null || tr1.equals("null", ignoreCase = true) || tr1.isEmpty()) "0" else tr1
     val team2Score = if (tr2 == null || tr2.equals("null", ignoreCase = true) || tr2.isEmpty()) "0" else tr2
     
-    return if (status == "NS" && team1Score == "0" && team2Score == "0") {
+    val notPlayed = status == "NS" || status == "Postp." || status == "Canc."
+    return if (notPlayed && team1Score == "0" && team2Score == "0") {
         "vs"
     } else {
         "${team1Score} - ${team2Score}"
@@ -310,6 +286,7 @@ private fun StatusBadge(status: String?, minutes: String?, startTime: Long?, esi
             "AET" -> "AET" to Color.Gray
             "AP" -> "AP" to Color.Gray
             "HT" -> "HT" to Color.Magenta
+            "POSTP.", "CANC.", "ABAND." -> status to Color.Red
             "NS" -> {
                 val timeText = startTime?.let { formatStartTime(it) } ?: "NS"
                 timeText to MaterialTheme.colorScheme.onSurface
@@ -433,18 +410,4 @@ fun CompetitionHeader(stage: Stage) {
             }
         }
     }
-}
-
-@Composable
-fun DateHeader(timestamp: Long) {
-    val dateFormat = SimpleDateFormat("EEEE, MMMM d, yyyy", Locale.getDefault())
-    val dateText = dateFormat.format(Date(timestamp))
-    
-    Text(
-        text = dateText,
-        style = MaterialTheme.typography.headlineSmall,
-        fontWeight = FontWeight.Bold,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(16.dp)
-    )
 }

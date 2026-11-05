@@ -141,6 +141,27 @@ private fun MatchSheetHeader(matchDetail: MatchDetailResponse?, event: Event?) {
                     ?: event?.T2?.firstOrNull()?.getTeamImageUrl()
             )
         }
+
+        val periods = matchDetail?.periodScores().orEmpty()
+        if (periods.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(12.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                periods.forEach { (label, score1, score2) ->
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Text(text = score1, style = MaterialTheme.typography.bodyMedium)
+                        Text(text = score2, style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -332,7 +353,7 @@ private fun SubstitutionsSection(subs: Map<String, List<Substitution>>) {
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            subs.forEach { (teamKey, teamSubs) ->
+            subs.values.forEach { teamSubs ->
                 val outgoing = teamSubs.filter { it.IT == 4 }
                 val incoming = teamSubs.filter { it.IT == 5 }
 
@@ -347,21 +368,6 @@ private fun SubstitutionsSection(subs: Map<String, List<Substitution>>) {
                             .padding(vertical = 2.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Surface(
-                            modifier = Modifier.size(20.dp),
-                            shape = CircleShape,
-                            color = if (teamKey == "1") Color(0xFF4CAF50).copy(alpha = 0.1f) else Color(0xFF2196F3).copy(alpha = 0.1f)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Text(
-                                    text = "⇄",
-                                    modifier = Modifier.size(12.dp),
-                                    fontSize = 10.sp,
-                                    color = if (teamKey == "1") Color(0xFF4CAF50) else Color(0xFF2196F3)
-                                )
-                            }
-                        }
-                        Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = "${out.Min}'",
                             style = MaterialTheme.typography.labelSmall,
@@ -417,67 +423,26 @@ private fun IncidentsSection(incidentGroups: List<MatchIncidentGroup>) {
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
 
-                    if (group.isFlat()) {
-                        val icon = when (group.IT) {
-                            36 -> "⚽ "
-                            37 -> "🟨 "
-                            38 -> "🟥 "
-                            39 -> "⚽ "
-                            88 -> "❌ "
-                            45 -> "🟥 "
-                            else -> ""
-                        }
-                        val color = when (group.IT) {
-                            36 -> Color(0xFF4CAF50)
-                            37 -> Color(0xFFFFC107)
-                            38 -> Color(0xFFF44336)
-                            39 -> Color(0xFF4CAF50)
-                            88 -> MaterialTheme.colorScheme.onSurface
-                            45 -> Color(0xFFF44336)
-                            else -> MaterialTheme.colorScheme.onSurface
-                        }
-                        Text(
-                            text = "${icon}${group.getFlatPlayerName()}",
-                            style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.weight(1f),
-                            color = color
-                        )
+                    val (kind, name) = if (group.isFlat()) {
+                        IncidentKind.of(group.IT) to group.getFlatPlayerName()
                     } else {
-                        val goals = group.Incs?.filter { it.IT == 36 } ?: emptyList()
-                        val assists = group.Incs?.filter { it.IT == 63 } ?: emptyList()
-                        val others = group.Incs?.filter { it.IT != 36 && it.IT != 63 } ?: emptyList()
-
-                        val displayText = when {
-                            goals.isNotEmpty() && assists.isNotEmpty() -> {
-                                val scorer = goals.first().getPlayerName()
-                                val assister = assists.first().getPlayerName()
-                                "$scorer ($assister)"
-                            }
-                            goals.isNotEmpty() -> {
-                                goals.first().getPlayerName()
-                            }
-                            others.isNotEmpty() -> {
-                                others.first().getPlayerName()
-                            }
-                            else -> ""
-                        }
-
-                        val icon = when {
-                            goals.isNotEmpty() -> "⚽ "
-                            else -> ""
-                        }
-                        val color = when {
-                            goals.isNotEmpty() -> Color(0xFF4CAF50)
-                            else -> MaterialTheme.colorScheme.onSurface
-                        }
-
-                        Text(
-                            text = "${icon}${displayText}",
-                            style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.weight(1f),
-                            color = color
-                        )
+                        group.Incs.orEmpty().firstOrNull { it.IT != IncidentKind.ASSIST.code }
+                            ?.let { IncidentKind.of(it.IT) to it.getPlayerName() } ?: (null to "")
                     }
+                    val assist = group.Incs?.find { it.IT == IncidentKind.ASSIST.code }?.getPlayerName()
+                    val color = when {
+                        kind?.isGoal == true -> Color(0xFF4CAF50)
+                        kind == IncidentKind.YELLOW_CARD -> Color(0xFFFFC107)
+                        kind == IncidentKind.RED_CARD || kind == IncidentKind.SECOND_YELLOW -> Color(0xFFF44336)
+                        else -> MaterialTheme.colorScheme.onSurface
+                    }
+                    Text(
+                        text = (kind?.let { "${it.icon} " } ?: "") + name + (kind?.suffix ?: "") +
+                            (assist?.let { " ($it)" } ?: ""),
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.weight(1f),
+                        color = color
+                    )
 
                     if (group.Sc != null && group.Sc.size == 2) {
                         Text(

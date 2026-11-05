@@ -32,8 +32,19 @@ data class MatchDetailResponse(
     val Stg: Stage,
     val Pid: Int,
     val Eloff: Int,
-    val `Incs-s`: Map<String, List<MatchIncidentGroup>>?
-)
+    val `Incs-s`: Map<String, List<MatchIncidentGroup>>?,
+    val Tr1Q1: String? = null, val Tr2Q1: String? = null,
+    val Tr1Q2: String? = null, val Tr2Q2: String? = null,
+    val Tr1Q3: String? = null, val Tr2Q3: String? = null,
+    val Tr1Q4: String? = null, val Tr2Q4: String? = null,
+    val Tr1OT: String? = null, val Tr2OT: String? = null
+) {
+    fun periodScores(): List<Triple<String, String, String>> = listOf(
+        Triple("Q1", Tr1Q1, Tr2Q1), Triple("Q2", Tr1Q2, Tr2Q2),
+        Triple("Q3", Tr1Q3, Tr2Q3), Triple("Q4", Tr1Q4, Tr2Q4),
+        Triple("OT", Tr1OT, Tr2OT)
+    ).mapNotNull { (label, a, b) -> if (a != null && b != null) Triple(label, a, b) else null }
+}
 
 data class MatchDetailMedia(
     val `33`: List<MediaItem>?,
@@ -61,15 +72,7 @@ data class DetailTeam(
     val aG: Int,
     val Spid: Int
 ) {
-    fun getTeamImageUrl(): String? {
-        return Img?.let { 
-            if (it.startsWith("enet")) {
-                "https://storage.livescore.com/images/team/medium/$it"
-            } else {
-                it
-            }
-        }
-    }
+    fun getTeamImageUrl(): String? = teamImageUrl(Img)
 }
 
 data class Venue(
@@ -108,24 +111,27 @@ data class MatchIncidentGroup(
 ) {
     fun isFlat(): Boolean = Incs == null && IT != null
 
-    fun getFlatIncidentType(): String? {
-        if (!isFlat()) return null
-        return when (IT) {
-            36 -> "Goal"
-            63 -> "Assist"
-            37 -> "Yellow Card"
-            38 -> "Red Card"
-            39 -> "Own Goal"
-            88 -> "Missed Penalty"
-            45 -> "Red Card"
-            else -> "Event"
-        }
-    }
-
     fun getFlatPlayerName(): String {
         return if (!Pn.isNullOrEmpty()) Pn
         else if (!Fn.isNullOrEmpty() && !Ln.isNullOrEmpty()) "$Fn $Ln"
         else "Unknown Player"
+    }
+}
+
+enum class IncidentKind(val code: Int, val icon: String, val suffix: String = "") {
+    GOAL(36, "⚽"),
+    PENALTY_GOAL(37, "⚽", " (pen)"),
+    MISSED_PENALTY(38, "❌", " (missed pen)"),
+    OWN_GOAL(39, "⚽", " (OG)"),
+    YELLOW_CARD(43, "🟨"),
+    SECOND_YELLOW(44, "🟨🟥"),
+    RED_CARD(45, "🟥"),
+    ASSIST(63, "👟");
+
+    val isGoal: Boolean get() = this == GOAL || this == PENALTY_GOAL || this == OWN_GOAL
+
+    companion object {
+        fun of(code: Int?): IncidentKind? = entries.find { it.code == code }
     }
 }
 
@@ -153,27 +159,6 @@ data class Incident(
     val OutFn: String?,
     val OutLn: String?
 ) {
-    fun getIncidentType(): String {
-        return when (IT) {
-            36 -> "⚽"
-            63 -> "👟"
-            37 -> "🟨"
-            38 -> "🟥"
-            45 -> "🔄"
-            39 -> "⚽"
-            88 -> "❌"
-            else -> when (Nm) {
-                3 -> "🟨"
-                4 -> "🟥"
-                5 -> "🔄"
-                6 -> "⚽"
-                7 -> "⚽"
-                8 -> "❌"
-                else -> "•"
-            }
-        }
-    }
-    
     fun getPlayerName(): String {
         return if (!Pn.isNullOrEmpty()) {
             Pn

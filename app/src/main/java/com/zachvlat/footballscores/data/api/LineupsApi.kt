@@ -6,6 +6,6 @@ import retrofit2.http.Path
 
 interface LineupsApi {
 
-    @GET("v1/api/app/lineups/soccer/{matchId}?locale=en")
-    suspend fun getLineups(@Path("matchId") matchId: String): LineupsResponse
+    @GET("v1/api/app/lineups/{sport}/{matchId}?locale=en")
+    suspend fun getLineups(@Path("sport") sport: String, @Path("matchId") matchId: String): LineupsResponse
 }

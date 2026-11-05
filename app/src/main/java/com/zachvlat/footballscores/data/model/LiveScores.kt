@@ -46,14 +46,7 @@ data class Stage(
     val firstColor: String?,
     val Events: List<Event>
 ) {
-    fun getCompetitionBadgeUrl(): String? {
-        return badgeUrl?.let { 
-            when {
-                it.contains("cricket", ignoreCase = true) -> "https://prod-cdn-static.livescore.com/web/static/images/competitions/1/$it"
-                else -> "https://storage.livescore.com/images/competition/high/$it"
-            }
-        }
-    }
+    fun getCompetitionBadgeUrl(): String? = badgeUrl?.let { "https://storage.livescore.com/images/competition/high/$it" }
 }
 
 data class Event(
@@ -91,20 +84,21 @@ data class Event(
     val TPa: Int?,
     val TCho: Int?
 ) {
-    fun isLive(): Boolean {
-        if (Esid == 33) return true
-        val epsUpper = Eps?.uppercase() ?: return false
-        return when (epsUpper) {
-            "LIVE", "HT", "2H", "1H", "ET", "BT", "P" -> true
-            else -> {
-            epsUpper.contains("'") ||
-            epsUpper.matches(Regex("\\d+'")) ||
-            epsUpper.matches(Regex("\\d+\\+\\d+'")) ||
-            epsUpper.matches(Regex("\\d+Q")) ||
-            epsUpper.matches(Regex("\\d+E")) ||
+    fun isLive(): Boolean = isLiveStatus(Esid, Eps)
+}
+
+private val QUARTER = Regex("\\d+Q")
+private val EXTRA_PERIOD = Regex("\\d+E")
+
+fun isLiveStatus(esid: Int, eps: String?): Boolean {
+    if (esid == 33) return true
+    val epsUpper = eps?.uppercase() ?: return false
+    return when (epsUpper) {
+        "LIVE", "HT", "2H", "1H", "ET", "BT", "P" -> true
+        else -> epsUpper.contains("'") ||
+            epsUpper.matches(QUARTER) ||
+            epsUpper.matches(EXTRA_PERIOD) ||
             epsUpper.startsWith("OT")
-            }
-        }
     }
 }
 
@@ -117,15 +111,11 @@ data class Team(
     val Fc: String?,
     val Sc: String?
 ) {
-    fun getTeamImageUrl(): String? {
-        return Img?.let { 
-            when {
-                it.startsWith("enet") -> "https://storage.livescore.com/images/team/high/$it"
-                it.contains("---cricket") -> "https://prod-cdn-static.livescore.com/web/static/images/team_badges/1/$it"
-                else -> it
-            }
-        }
-    }
+    fun getTeamImageUrl(): String? = teamImageUrl(Img)
+}
+
+fun teamImageUrl(img: String?): String? = img?.takeIf { it.isNotBlank() }?.let {
+    if (it.startsWith("http")) it else "https://storage.livescore.com/images/team/high/$it"
 }
 
 data class Media(

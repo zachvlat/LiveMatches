@@ -5,11 +5,7 @@ import retrofit2.http.GET
 import retrofit2.http.Path
 
 interface MatchDetailApi {
-    
-    @GET("v1/api/app/scoreboard/soccer/{matchId}?locale=en")
-    suspend fun getMatchDetails(@Path("matchId") matchId: String): MatchDetailResponse
-    
-    companion object {
-        private const val BASE_URL = "https://prod-cdn-public-api.livescore.com/"
-    }
+
+    @GET("v1/api/app/scoreboard/{sport}/{matchId}?locale=en")
+    suspend fun getMatchDetails(@Path("sport") sport: String, @Path("matchId") matchId: String): MatchDetailResponse
 }

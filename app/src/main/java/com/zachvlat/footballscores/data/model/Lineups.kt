@@ -35,7 +35,7 @@ data class Player(
         }
     }
 
-    fun isStarting(): Boolean = Fp != null
+    fun isStarting(): Boolean = Fp != null || Pon == "STARTER"
 
     fun isBench(): Boolean = PosS != null
 
