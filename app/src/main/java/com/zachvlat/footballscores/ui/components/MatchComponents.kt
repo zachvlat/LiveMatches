@@ -7,6 +7,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -19,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.zachvlat.footballscores.data.model.Event
+import com.zachvlat.footballscores.data.model.FINISHED_AFTER_OVERTIME_ESIDS
 import com.zachvlat.footballscores.data.model.Stage
 import com.zachvlat.footballscores.data.model.Team
 import java.text.SimpleDateFormat
@@ -45,7 +47,13 @@ private fun parseColor(colorString: String): Color {
 }
 
 @Composable
-fun MatchCard(event: Event, onMatchClick: (String) -> Unit = {}, modifier: Modifier = Modifier) {
+fun MatchCard(
+    event: Event,
+    onMatchClick: (String) -> Unit = {},
+    modifier: Modifier = Modifier,
+    starred: Boolean = false,
+    onToggleStar: (() -> Unit)? = null
+) {
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -56,23 +64,45 @@ fun MatchCard(event: Event, onMatchClick: (String) -> Unit = {}, modifier: Modif
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            TeamInfo(team = event.T1.first(), alignment = Alignment.End)
+        Box {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TeamInfo(team = event.T1.first(), alignment = Alignment.End)
 
-            Spacer(modifier = Modifier.width(16.dp))
+                Spacer(modifier = Modifier.width(16.dp))
 
-            ScoreSection(event = event)
+                ScoreSection(event = event)
 
-            Spacer(modifier = Modifier.width(16.dp))
+                Spacer(modifier = Modifier.width(16.dp))
 
-            TeamInfo(team = event.T2.first(), alignment = Alignment.Start)
+                TeamInfo(team = event.T2.first(), alignment = Alignment.Start)
+            }
+            if (onToggleStar != null) {
+                StarButton(
+                    starred = starred,
+                    onClick = onToggleStar,
+                    contentDescription = if (starred) "Unstar match" else "Star match",
+                    modifier = Modifier.align(Alignment.TopEnd)
+                )
+            }
         }
+    }
+}
+
+@Composable
+fun StarButton(starred: Boolean, onClick: () -> Unit, contentDescription: String, modifier: Modifier = Modifier) {
+    IconButton(onClick = onClick, modifier = modifier.size(36.dp)) {
+        Icon(
+            imageVector = Icons.Default.Star,
+            contentDescription = contentDescription,
+            tint = if (starred) Color(0xFFFFC107) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.25f),
+            modifier = Modifier.size(20.dp)
+        )
     }
 }
 
@@ -277,6 +307,7 @@ private fun formatOvers(overs: Double): String {
 private fun StatusBadge(status: String?, minutes: String?, startTime: Long?, esid: Int = 0) {
     val (statusText, color) = when {
         esid == 33 -> "LIVE" to Color.Green
+        esid in FINISHED_AFTER_OVERTIME_ESIDS -> "AOT" to Color.Gray
         esid == 1 && status?.uppercase() == "NS" -> {
             val timeText = startTime?.let { formatStartTime(it) } ?: "NS"
             timeText to MaterialTheme.colorScheme.onSurface

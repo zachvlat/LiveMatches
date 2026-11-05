@@ -25,6 +25,8 @@ fun MatchDetailBottomSheet(
     matchDetail: MatchDetailResponse?,
     lineups: LineupsResponse?,
     event: Event?,
+    favoriteTeamIds: Set<String>,
+    onToggleTeam: (id: String, name: String, img: String?) -> Unit,
     onDismiss: () -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -43,7 +45,7 @@ fun MatchDetailBottomSheet(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
-                MatchSheetHeader(matchDetail, event)
+                MatchSheetHeader(matchDetail, event, favoriteTeamIds, onToggleTeam)
             }
 
             if (lineups != null) {
@@ -75,7 +77,12 @@ fun MatchDetailBottomSheet(
 }
 
 @Composable
-private fun MatchSheetHeader(matchDetail: MatchDetailResponse?, event: Event?) {
+private fun MatchSheetHeader(
+    matchDetail: MatchDetailResponse?,
+    event: Event?,
+    favoriteTeamIds: Set<String>,
+    onToggleTeam: (id: String, name: String, img: String?) -> Unit
+) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -114,7 +121,10 @@ private fun MatchSheetHeader(matchDetail: MatchDetailResponse?, event: Event?) {
             TeamColumn(
                 name = team1Name,
                 imageUrl = matchDetail?.T1?.firstOrNull()?.getTeamImageUrl()
-                    ?: event?.T1?.firstOrNull()?.getTeamImageUrl()
+                    ?: event?.T1?.firstOrNull()?.getTeamImageUrl(),
+                teamId = matchDetail?.T1?.firstOrNull()?.ID ?: event?.T1?.firstOrNull()?.ID,
+                favoriteTeamIds = favoriteTeamIds,
+                onToggleTeam = onToggleTeam
             )
 
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -138,7 +148,10 @@ private fun MatchSheetHeader(matchDetail: MatchDetailResponse?, event: Event?) {
             TeamColumn(
                 name = team2Name,
                 imageUrl = matchDetail?.T2?.firstOrNull()?.getTeamImageUrl()
-                    ?: event?.T2?.firstOrNull()?.getTeamImageUrl()
+                    ?: event?.T2?.firstOrNull()?.getTeamImageUrl(),
+                teamId = matchDetail?.T2?.firstOrNull()?.ID ?: event?.T2?.firstOrNull()?.ID,
+                favoriteTeamIds = favoriteTeamIds,
+                onToggleTeam = onToggleTeam
             )
         }
 
@@ -166,7 +179,13 @@ private fun MatchSheetHeader(matchDetail: MatchDetailResponse?, event: Event?) {
 }
 
 @Composable
-private fun TeamColumn(name: String, imageUrl: String?) {
+private fun TeamColumn(
+    name: String,
+    imageUrl: String?,
+    teamId: String?,
+    favoriteTeamIds: Set<String>,
+    onToggleTeam: (id: String, name: String, img: String?) -> Unit
+) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.width(100.dp)
@@ -200,6 +219,14 @@ private fun TeamColumn(name: String, imageUrl: String?) {
             textAlign = TextAlign.Center,
             maxLines = 2
         )
+        if (teamId != null) {
+            val favorite = teamId in favoriteTeamIds
+            StarButton(
+                starred = favorite,
+                onClick = { onToggleTeam(teamId, name, imageUrl) },
+                contentDescription = if (favorite) "Remove $name from favorites" else "Add $name to favorites"
+            )
+        }
     }
 }
 

@@ -1,6 +1,20 @@
 package com.zachvlat.footballscores
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
+import com.zachvlat.footballscores.data.favorites.FavoriteTeam
+import com.zachvlat.footballscores.data.favorites.FavoritesStore
+import com.zachvlat.footballscores.notifications.MatchAlerts
+import com.zachvlat.footballscores.notifications.toStarredMatch
+import com.zachvlat.footballscores.data.model.Event
+import com.zachvlat.footballscores.data.model.teamLogos
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -22,6 +36,7 @@ import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Star
 
 import androidx.compose.material3.*
 import androidx.compose.ui.window.Dialog
@@ -58,6 +73,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        MatchAlerts.start(this)
         setContent {
             FootballscoresTheme {
                 MainScreen()
@@ -70,6 +86,8 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MainScreen() {
     var selectedSport by remember { mutableStateOf(SportType.SOCCER) }
+    var showFavorites by remember { mutableStateOf(false) }
+    BackHandler(enabled = showFavorites) { showFavorites = false }
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     
@@ -89,9 +107,10 @@ fun MainScreen() {
                 SportType.values().forEach { sport ->
                     NavigationDrawerItem(
                         label = { Text(sport.displayName) },
-                        selected = selectedSport == sport,
+                        selected = !showFavorites && selectedSport == sport,
                         onClick = {
                             selectedSport = sport
+                            showFavorites = false
                             scope.launch {
                                 drawerState.close()
                             }
@@ -99,6 +118,19 @@ fun MainScreen() {
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
                     )
                 }
+
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+                NavigationDrawerItem(
+                    label = { Text("Favorites") },
+                    icon = { Icon(Icons.Default.Star, contentDescription = null) },
+                    selected = showFavorites,
+                    onClick = {
+                        showFavorites = true
+                        scope.launch { drawerState.close() }
+                    },
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                )
             }
         }
     ) {
@@ -131,7 +163,11 @@ fun MainScreen() {
             )
             
             Box(modifier = Modifier.weight(1f)) {
-                key(selectedSport) { SportScreen(sportType = selectedSport) }
+                if (showFavorites) {
+                    FavoritesScreen()
+                } else {
+                    key(selectedSport) { SportScreen(sportType = selectedSport) }
+                }
             }
         }
     }
@@ -152,17 +188,56 @@ fun SportScreen(sportType: SportType) {
         }
     }
 
+    val context = LocalContext.current
+    val favorites = FavoritesStore.get(context)
+    val sport = sportType.apiPath
+    val starredMatchIds = favorites.matches.collectAsState().value.filter { it.sport == sport }.map { it.eid }.toSet()
+    val favoriteTeamIds = favorites.teams.collectAsState().value.filter { it.sport == sport }.map { it.id }.toSet()
+    val requestNotificationPermission = rememberNotificationPermissionRequest()
+
+    val uiState = viewModel.uiState.collectAsState().value
+    LaunchedEffect(uiState) {
+        if (uiState is ScoresUiState.Success) {
+            favorites.fillMissingTeamLogos(sport, teamLogos(uiState.response.Stages.flatMap { it.Events }))
+        }
+    }
+
     SportContent(
         sportType = sportType,
         currentDate = currentDate,
         isRefreshing = viewModel.isRefreshing.collectAsState().value,
-        uiState = viewModel.uiState.collectAsState().value,
+        uiState = uiState,
         matchDetailState = viewModel.matchDetailState.collectAsState().value,
         onRefresh = viewModel::refresh,
         onLoadScoresForDate = viewModel::loadScoresForDate,
         onDismissMatchDetail = viewModel::dismissMatchDetail,
-        onMatchClick = if (sportType.hasMatchDetails) viewModel::onMatchClick else { _ -> }
+        onMatchClick = if (sportType.hasMatchDetails) viewModel::onMatchClick else { _ -> },
+        starredMatchIds = starredMatchIds,
+        onToggleMatch = { event ->
+            val match = event.toStarredMatch(sport)
+            val starred = favorites.toggleMatch(match)
+            if (starred) requestNotificationPermission()
+            MatchAlerts.onMatchToggled(context, match, starred)
+        },
+        favoriteTeamIds = favoriteTeamIds,
+        onToggleTeam = { id, name, img ->
+            if (favorites.toggleTeam(FavoriteTeam(sport, id, name, img))) requestNotificationPermission()
+            MatchAlerts.replan(context)
+        }
     )
+}
+
+@Composable
+fun rememberNotificationPermissionRequest(): () -> Unit {
+    val context = LocalContext.current
+    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
+    return {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -176,7 +251,11 @@ fun SportContent(
     onRefresh: () -> Unit,
     onLoadScoresForDate: (String) -> Unit,
     onDismissMatchDetail: () -> Unit,
-    onMatchClick: (String) -> Unit = {}
+    onMatchClick: (String) -> Unit,
+    starredMatchIds: Set<String>,
+    onToggleMatch: (Event) -> Unit,
+    favoriteTeamIds: Set<String>,
+    onToggleTeam: (id: String, name: String, img: String?) -> Unit
 ) {
     var showDateDialog by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
@@ -353,7 +432,12 @@ fun SportContent(
                         val where = if (query.isNotEmpty()) "for \"$searchQuery\"" else "for selected date"
                         EmptyState(message = "No $live$sport matches found $where", onRefresh = onRefresh)
                     } else {
-                        MatchList(stages = filteredStages, onMatchClick = onMatchClick)
+                        MatchList(
+                            stages = filteredStages,
+                            onMatchClick = onMatchClick,
+                            starredMatchIds = starredMatchIds,
+                            onToggleMatch = onToggleMatch
+                        )
                     }
                 }
                 is ScoresUiState.Error -> ErrorMessage(message = uiState.message, onRefresh = onRefresh)
@@ -379,6 +463,8 @@ fun SportContent(
                     matchDetail = state.matchDetail,
                     lineups = state.lineups,
                     event = state.event,
+                    favoriteTeamIds = favoriteTeamIds,
+                    onToggleTeam = onToggleTeam,
                     onDismiss = onDismissMatchDetail
                 )
             }
@@ -419,7 +505,9 @@ fun SportContent(
 @Composable
 fun MatchList(
     stages: List<com.zachvlat.footballscores.data.model.Stage>,
-    onMatchClick: (String) -> Unit = {}
+    onMatchClick: (String) -> Unit,
+    starredMatchIds: Set<String>,
+    onToggleMatch: (Event) -> Unit
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -432,7 +520,12 @@ fun MatchList(
                 }
                 
                 items(stage.Events) { event ->
-                    MatchCard(event = event, onMatchClick = onMatchClick)
+                    MatchCard(
+                        event = event,
+                        onMatchClick = onMatchClick,
+                        starred = event.Eid in starredMatchIds,
+                        onToggleStar = { onToggleMatch(event) }
+                    )
                 }
             }
         }

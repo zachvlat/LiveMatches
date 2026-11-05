@@ -3,12 +3,15 @@ package com.zachvlat.footballscores
 import com.google.gson.Gson
 import com.zachvlat.footballscores.data.api.apiOffsetHours
 import com.zachvlat.footballscores.data.api.esdToLocalTime
+import com.zachvlat.footballscores.data.favorites.FavoriteTeam
+import com.zachvlat.footballscores.data.favorites.StarredMatch
 import com.zachvlat.footballscores.data.model.IncidentKind
 import com.zachvlat.footballscores.data.model.LineupsResponse
 import com.zachvlat.footballscores.data.model.MatchIncidentGroup
 import com.zachvlat.footballscores.data.model.MatchDetailResponse
 import com.zachvlat.footballscores.data.model.isLiveStatus
 import com.zachvlat.footballscores.data.model.teamImageUrl
+import com.zachvlat.footballscores.data.model.teamLogos
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.util.TimeZone
@@ -24,6 +27,8 @@ class LogicTest {
         )
         cases.forEach { (eps, live) -> assertEquals("Eps=$eps", live, isLiveStatus(0, eps)) }
         assertEquals(true, isLiveStatus(33, "FT"))
+        assertEquals(false, isLiveStatus(36, "OT"))
+        assertEquals(false, isLiveStatus(39, "OT"))
     }
 
     @Test
@@ -67,6 +72,30 @@ class LogicTest {
         assertEquals(IncidentKind.PENALTY_GOAL, aghehowa)
         assertEquals(true, aghehowa.isGoal)
         assertEquals(false, IncidentKind.MISSED_PENALTY.isGoal)
+    }
+
+    @Test
+    fun favorites_surviveSaveAndLoad() {
+        val match = StarredMatch("soccer", "1882832", 20261104194500, "Fenerbahçe", "Brighton | Hove")
+        assertEquals(match, StarredMatch.decode(match.encode()))
+        assertEquals(StarredMatch("soccer", "1", 20261104194500, "", ""), StarredMatch.decode("soccer|1|20261104194500"))
+
+        val team = FavoriteTeam("soccer", "92", "Brighton & Hove | Albion", "https://storage.livescore.com/images/team/high/enet/8678.png")
+        assertEquals(team, FavoriteTeam.decode(team.encode()))
+        val noLogo = FavoriteTeam("hockey", "7", "Bears", null)
+        assertEquals(noLogo, FavoriteTeam.decode(noLogo.encode()))
+        assertEquals(FavoriteTeam("soccer", "92", "Liverpool", null), FavoriteTeam.decode("soccer|92|Liverpool"))
+
+        assertEquals(null, StarredMatch.decode("soccer|1882832|notanumber"))
+        assertEquals(null, FavoriteTeam.decode("broken"))
+    }
+
+    @Test
+    fun teamLogos_comeFromEveryTeamInTheList() {
+        val json = """[{"Eid":"1","T1":[{"ID":"92","Nm":"Liverpool","Img":"teambadge/liverpool-2024.png"}],
+                        "T2":[{"ID":"5","Nm":"No Logo"}]}]"""
+        val events = Gson().fromJson(json, Array<com.zachvlat.footballscores.data.model.Event>::class.java).toList()
+        assertEquals(mapOf("92" to "teambadge/liverpool-2024.png"), teamLogos(events))
     }
 
     @Test

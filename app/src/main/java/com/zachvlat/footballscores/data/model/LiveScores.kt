@@ -90,8 +90,24 @@ data class Event(
 private val QUARTER = Regex("\\d+Q")
 private val EXTRA_PERIOD = Regex("\\d+E")
 
+val FINISHED_AFTER_OVERTIME_ESIDS = setOf(36, 39)
+
+private val FINISHED_ESIDS = setOf(6, 11, 13) + FINISHED_AFTER_OVERTIME_ESIDS
+
+private val CALLED_OFF_ESIDS = setOf(5, 17, 56)
+
+private val CALLED_OFF_STATUSES = setOf("POSTP.", "CANC.", "ABAND.")
+
+private val FINISHED_STATUSES = setOf("FT", "AET", "AP")
+
+fun isCalledOff(esid: Int, eps: String?): Boolean = esid in CALLED_OFF_ESIDS || eps?.uppercase() in CALLED_OFF_STATUSES
+
+fun isMatchOver(esid: Int, eps: String?): Boolean =
+    esid in FINISHED_ESIDS || eps?.uppercase() in FINISHED_STATUSES || isCalledOff(esid, eps)
+
 fun isLiveStatus(esid: Int, eps: String?): Boolean {
     if (esid == 33) return true
+    if (esid in FINISHED_ESIDS) return false
     val epsUpper = eps?.uppercase() ?: return false
     return when (epsUpper) {
         "LIVE", "HT", "2H", "1H", "ET", "BT", "P" -> true
@@ -113,6 +129,9 @@ data class Team(
 ) {
     fun getTeamImageUrl(): String? = teamImageUrl(Img)
 }
+
+fun teamLogos(events: List<Event>): Map<String, String> =
+    events.flatMap { it.T1 + it.T2 }.mapNotNull { team -> team.Img?.takeIf { it.isNotBlank() }?.let { team.ID to it } }.toMap()
 
 fun teamImageUrl(img: String?): String? = img?.takeIf { it.isNotBlank() }?.let {
     if (it.startsWith("http")) it else "https://storage.livescore.com/images/team/high/$it"
